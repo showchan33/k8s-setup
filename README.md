@@ -128,6 +128,10 @@ ansible-playbook site_worker.yml
 
 # 注意事項、制約事項
 
+* 使用しているコンテナランタイムはcontainerdです。
+* CNIの構築は本ツールでは行えません。本ツールを実行後に各自で構築いただくようにお願いいたします。
+* 動作確認したKubernetesのバージョンは以下になります。今後Kubernetesがアップグレードした際に正常動作しなくなる可能性があります
+
 ```
 $ kubectl version
 Client Version: v1.28.2
