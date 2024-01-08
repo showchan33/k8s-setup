@@ -1,0 +1,9 @@
+- name: Read file content and set variable
+  command: cat "{{ file_kubeadm_join_command }}"
+  register: kubeadm_join_command
+  changed_when: false
+  delegate_to: localhost
+
+- name: kubeadm join
+  become: yes
+  shell: "{{ kubeadm_join_command.stdout }}"

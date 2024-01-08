@@ -1,0 +1,7 @@
+- name: k8s-setup-worker
+  hosts: worker-node
+  roles:
+    - role: common
+      tags: common
+    - role: worker
+      tags: worker

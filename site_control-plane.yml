@@ -1,0 +1,9 @@
+- name: k8s-setup-control-plane
+  hosts: control-plane
+  vars:
+    file_kubeadm_join_command: "./kubeadm_join_command.tmp"
+  roles:
+    - role: common
+      tags: common
+    - role: control_plane
+      tags: control_plane

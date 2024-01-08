@@ -1,0 +1,153 @@
+- name: Update apt packages
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: Disable swap
+  become: yes
+  replace:
+    path: /etc/fstab
+    regexp: "^/swapfile"
+    replace: "#/swapfile"
+
+- name: Installation and configuration of containerd
+  block:
+
+  - name: Install containerd as container runtime
+    become: yes
+    apt:
+      name: ['containerd']
+
+  - name: Check /etc/containerd/config.toml existence
+    stat:
+      path: /etc/containerd/config.toml
+    register: containerd_config_stat
+
+  - block:
+
+    - name: Create containerd config file directory
+      become: yes
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Create containerd config file
+      become: yes
+      shell: |-
+        containerd config dump > /etc/containerd/config.toml
+
+    - name: Set SystemdCgroup to true in the containerd configuration file
+      become: yes
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = .*$'
+        replace: 'SystemdCgroup = true'
+      register: result_set_containerd_config
+
+    - name: Restart containerd
+      become: yes
+      systemd:
+        name: containerd.service
+        state: restarted
+      when: result_set_containerd_config.changed == true
+
+    when: not containerd_config_stat.stat.exists
+
+- name: Enable IPv4 forwarding
+  block:
+
+  - name: Add modules to be loaded to k8s.conf
+    become: yes
+    lineinfile:
+      path: /etc/modules-load.d/k8s.conf
+      line: "{{ item }}"
+      create: yes
+    loop: ["overlay", "br_netfilter"]
+    register: result_add_modules_to_conf
+
+  - name: "Load modules"
+    become: yes
+    shell: "modprobe {{ item }}"
+    loop: ["overlay", "br_netfilter"]
+    when: result_add_modules_to_conf.changed == true
+
+  - name: Bridge-passing configuration for iptables
+    become: yes
+    lineinfile:
+      path: /etc/sysctl.d/k8s.conf
+      line: "{{ item }}"
+      create: yes
+    loop:
+      - "net.bridge.bridge-nf-call-iptables  = 1"
+      - "net.bridge.bridge-nf-call-ip6tables = 1"
+      - "net.ipv4.ip_forward                 = 1"
+    register: result_ip_bridge
+
+  - name: "sysctl --system"
+    become: yes
+    shell: sysctl --system
+    when: result_ip_bridge.changed == true
+
+- name: Install kubernetes
+  block:
+
+  - name: Install packages needed to use the Kubernetes apt repository
+    become: yes
+    apt:
+      name: ['apt-transport-https', 'ca-certificates', 'curl', 'gpg']
+
+  - name: Check kubernetes-archive-keyring.gpg existence
+    stat:
+      path: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+    register: kubernetes_archive_keyring_stat
+
+  - name: Download GPG key
+    become: yes
+    shell: >-
+      curl -fsSL https://dl.k8s.io/apt/doc/apt-key.gpg |
+      gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+    when: not kubernetes_archive_keyring_stat.stat.exists
+
+  - name: Add k8s apt repository
+    become: yes
+    apt_repository:
+      repo: >-
+        deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+      state: present
+      filename: kubernetes
+
+  - name: Install kubernetes
+    become: yes
+    apt:
+      name: ['kubelet', 'kubeadm', 'kubectl']
+
+  - name: Fix kubernetes version
+    become: yes
+    shell: "apt-mark hold {{ item }}"
+    loop: ['kubelet', 'kubeadm', 'kubectl']
+
+- name: Start kubelet
+  become: yes
+  systemd:
+    name: kubelet.service
+    state: started
+    daemon_reload: yes
+    enabled: yes
+
+- name: Add node IP to /etc/default/kubelet
+  become: yes
+  lineinfile:
+    path: /etc/default/kubelet
+    regexp: '^KUBELET_EXTRA_ARGS=--node-ip=.*'
+    line: 'KUBELET_EXTRA_ARGS=--node-ip={{ node_ip }}'
+    create: yes
+  register: edit_kubelet_conf
+  when: node_ip is defined
+
+- name: Restart kubelet
+  become: yes
+  systemd:
+    name: kubelet.service
+    state: restarted
+    daemon_reload: yes
+  when: edit_kubelet_conf.changed == true

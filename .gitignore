@@ -1,0 +1,5 @@
+hosts
+./files/sshkey
+./group_vars/*.yml
+./host_vars/*.yml
+kubeadm_join_command.tmp

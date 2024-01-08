@@ -1,0 +1,47 @@
+- name: kubeadm init
+  become: yes
+  shell: >-
+    kubeadm init
+    {%- if kubeadm.pod_network_cidr is defined %}
+    --pod-network-cidr={{ kubeadm.pod_network_cidr }}
+    {%- endif -%}
+    {%- if kubeadm.service_cidr is defined %}
+    --service-cidr={{ kubeadm.service_cidr }}
+    {%- endif -%}
+    {%- if kubeadm.apiserver_advertise_address is defined %}
+    --apiserver-advertise-address={{ kubeadm.apiserver_advertise_address }}
+    {%- endif %}
+    | grep -A 1 "^kubeadm join"
+  register: result_kubeadm_join
+
+- name: Remove newlines and tabs from result_kubeadm_join
+  set_fact:
+    kubeadm_join_command: "{{ result_kubeadm_join.stdout | replace('\n', '') | replace('\t', '') | regex_replace('\\\\', '') }}"
+
+- name: Delete {{ file_kubeadm_join_command }} if it exists
+  become: yes
+  file: 
+    path: "{{ file_kubeadm_join_command }}"
+    state: absent
+  delegate_to: localhost
+
+- name: Save kubeadm_join_command to file
+  lineinfile:
+    line: "{{ kubeadm_join_command }}"
+    path: "{{ file_kubeadm_join_command }}"
+    create: yes
+  delegate_to: localhost
+
+- name: create .kube directory
+  file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+
+- name: Copy config file to .kube/config
+  become: yes
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    remote_src: yes

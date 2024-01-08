@@ -1,0 +1,6 @@
+ansible_host: control-plane1.example.com
+# node_ip: 10.0.0.4
+# kubeadm:
+#   pod_network_cidr: 192.168.0.0/16
+#   service_cidr: 10.96.0.0/12
+#   apiserver_advertise_address: "{{ node_ip }}"

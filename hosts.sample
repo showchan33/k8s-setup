@@ -1,0 +1,7 @@
+[control-plane]
+control-plane1
+
+[worker-node]
+worker-node1
+worker-node2
+worker-node3
