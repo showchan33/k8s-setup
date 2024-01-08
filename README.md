@@ -130,6 +130,7 @@ ansible-playbook site_worker.yml
 
 * 使用しているコンテナランタイムはcontainerdです。
 * CNIの構築は本ツールでは行えません。本ツールを実行後に各自で構築いただくようにお願いいたします。
+    * 筆者記事で恐縮ですが、[Qiita](https://qiita.com/showchan33/items/02e4a5f02b08c08d7813#4-cni%E3%81%AE%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB)にFlannelをインストールする方法を記載しています。
 * 動作確認したKubernetesのバージョンは以下になります。今後Kubernetesがアップグレードした際に正常動作しなくなる可能性があります
 
 ```
