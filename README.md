@@ -1,39 +1,39 @@
-# 本ツールの概要
+# About k8s-setup
 
-Ansibleとkubeadmを使って、LinuxマシンにKubernetesのcontrol planeとworker nodeを構築します。<br>
-構築を行うAnsible Playbookは、下の図のようにKubernetesを構築するマシンとは別のマシンから実行します。
+K8s-setup creates a Kubernetes cluster on a Linux machine. Ansible and kubeadm are used to create Kubernetes clusters.<br>
+Ansible Playbook is typically run from a different machine than the one on which Kubernetes cluster is created. The figure below illustrates this.
 
 ![](./doc/k8s-setup.png)
 
-# 必要条件
+# Requirement
 
-## Ansibleを実行するマシン
+## On the machine running Ansible
 
 * OS
-    * Linux（動作確認OSはUbuntu 20.04のみ）
-* ツール
+    * Linux (Checked on Ubuntu 20.04)
+* Tool
     * Ansible
 
-## Kubernetesを構築する各ノード
+## On each node in a Kubernetes cluster
 
 * OS
-    * Ubuntu（動作確認OSはUbuntu 22.04のみ）
-* ツール
+    * Ubuntu (Checked on Ubuntu 20.04)
+* Tool
     * Python3
 
-# 事前準備
+# Preparation
 
-## SSH接続用の公開鍵／秘密鍵を準備
+## Prepare public and private keys for SSH connection
 
-Kubernetesを構築する各ノードにSSHで接続するための公開鍵と秘密鍵のペアを用意します。<br>
-公開鍵は、各ノードの ``/home/[username]/.ssh/authorized_keys``に追加し、例えば以下のコマンドでSSHで接続できる状態にしておきます。
+SSH to each machine on which you will create Kubernetes to perform setup. Prepare a pair of public and private keys for this purpose.<br>
+Add the public key to ``/home/[username]/.ssh/authorized_keys`` on each node. After this you should be able to connect via SSH with the following command.
 
 ```
-ssh -i [秘密鍵ファイル名] [username]@[hostname]
+ssh -i [filename of private key] [username]@[hostname]
 ```
 
-## 設定ファイルの準備
-以下のように、``*.sample``ファイルから末尾の``.sample``を取り除いたファイルをコピーして作成します。
+## Prepare configuration files
+Create a copy of the ``*.sample`` file without the trailing ``.sample``, as follows.
 
 ```
 cp files/sshkey.sample files/sshkey
@@ -41,45 +41,46 @@ cp group_vars/all.yml.sample group_vars/all.yml
 cp hosts.sample hosts
 cp host_vars/control-plane1.yml.sample host_vars/control-plane1.yml
 cp host_vars/worker-node1.yml.sample host_vars/worker-node1.yml
-(作成したいワーカーノードの数だけコピー)
+(Copy the number of worker nodes to be created)
 ```
 
-各ファイルの内容を環境に応じて編集します。
+Edit the contents of each config file according to your environment.
 
 ### files/sshkey
 
-SSH接続に使う秘密鍵を格納します。以下の形式になります。
+Stores the private key used for SSH connections. It will be in the following format.
 ```
 -----BEGIN OPENSSH PRIVATE KEY-----
-(秘密鍵がBASE64エンコードされたテキストを格納)
+(BASE64-encoded text with the private key)
 -----END OPENSSH PRIVATE KEY-----
 ```
 
 ### group_vars/all.yml
 
-全てのホスト(ノード)で共通に使う変数を定義します。
+Define variables that are common to all hosts (i.e., nodes).
 ```
-ansible_user: user                              # リモートホストのユーザ名を記載
-ansible_ssh_private_key_file: "./files/sshkey"  # 秘密鍵ファイルのパスを指定
+ansible_user: user                              # Fill in the user name of the remote host.
+ansible_ssh_private_key_file: "./files/sshkey"  # Specify the path to the private key file.
 
-file_kubeadm_join_command: "./kubeadm_join_command.tmp" # 編集不要
+file_kubeadm_join_command: "./kubeadm_join_command.tmp" # Editing is not necessary.
 ```
 
 ### hosts
 
-機能別にホストをグループ化して、各ホストの名前を定義します。<br>
-各グループに記載されたホストの変数は後述の ``host_vars/[hostname].yml`` で定義します。
+Group hosts by controla plane and worker node and define a name for each host.<br>
+Variables for each group of hosts are set in ``host_vars/[hostname].yml`` described below.
 ```
-[control-plane] # control planeのホストグループ
+[control-plane] # Host group of control plane
 control-plane1
 
-[worker-node]   # worker nodeのホストグループ
+[worker-node]   # Host group of worker node 
 worker-node1
-(作成したいワーカーノードの数だけ記載)
+(Add worker nodes to be created, if necessary)
 ```
+
 ### host_vars/control-plane1.yml
 
-control planeで使う変数を定義します。<br>
+Define variables to be used in the control plane.<br>
 
 ```
 ansible_host: control-plane1.example.com
@@ -90,48 +91,48 @@ ansible_host: control-plane1.example.com
 #   apiserver_advertise_address: "{{ node_ip }}"
 ```
 
-* 必須
-    * ansible_host : SSH接続する際のホスト名（IPアドレスも可）を記載
-* オプショナル
-    * node_ip : Kubernetesのノードとして使う場合のIPアドレスを記載。主に``ansible_host``と異なるIPアドレスを使いたい場合に使用。例えばノードのプライベートIP等を記載
-    * kubeadm配下 : PodやServiceのCIDRをデフォルトとは異なる値にしたい場合等に記載
+* Required
+    * ansible_host : Host name for SSH connection. IP address can also be set.
+* Optional
+    * node_ip : IP address to connect to each Kubernetes node. Mainly used when you want to use an IP address different from ``ansible_host``. For example, a node's private IP, etc.
+    * kubeadm section : Indicate if you want the CIDR of a Pod or Service to be different from the default value.
 
 ### host_vars/worker-node1.yml
 
-worker nodeで使う変数を定義します。<br>
+Define variables to be used in the worker node.<br>
 
 ```
 ansible_host: worker-node1.example.com
 # node_ip: 10.0.0.5
 ```
 
-* 必須
-    * ansible_host : SSH接続する際のホスト名（IPアドレスも可）を記載
-* オプショナル
-    * node_ip : Kubernetesのノードとして使う場合のIPアドレスを記載
+* Required
+    * ansible_host : Host name for SSH connection. IP address can also be set.
+* Optional
+    * node_ip : IP address to connect to each Kubernetes node.
 
-# 実行コマンド
+# Creating a Kuberenetes cluster
 
-## control planeの構築
+## Building a control plane
 
-以下のコマンドを実行します。
+Execute the following command.
 ```
 ansible-playbook site_control-plane.yml
 ```
 
-## worker nodeの構築
+## Building a control plane
 
-control planeの構築完了後に、以下のコマンドを実行します。
+After building the control plane, execute the following command.
 ```
 ansible-playbook site_worker.yml
 ```
 
-# 注意事項、制約事項
+# Notes and Constraints
 
-* 使用しているコンテナランタイムはcontainerdです。
-* CNIの構築は本ツールでは行えません。本ツールを実行後に各自で構築いただくようにお願いいたします。
-    * 筆者記事で恐縮ですが、[Qiita](https://qiita.com/showchan33/items/02e4a5f02b08c08d7813#4-cni%E3%81%AE%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB)にFlannelをインストールする方法を記載しています。
-* 動作確認したKubernetesのバージョンは以下になります。今後Kubernetesがアップグレードした際に正常動作しなくなる可能性があります
+* containerd is used as container runtime.
+* CNI construction cannot be performed with this tool.
+    * For your reference, the author wrote how to install Flannel on [Qiita](https://qiita.com/showchan33/items/02e4a5f02b08c08d7813#4-cni%E3%81%AE%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB). Please understand that this article is written in Japanese.
+* The version of Kubernetes that was tested is as follows.
 
 ```
 $ kubectl version
