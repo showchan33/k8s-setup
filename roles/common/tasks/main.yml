@@ -18,40 +18,31 @@
     apt:
       name: ['containerd']
 
-  - name: Check /etc/containerd/config.toml existence
-    stat:
+  - name: Create containerd config file directory
+    become: yes
+    file:
+      path: /etc/containerd
+      state: directory
+
+  - name: Create containerd config file
+    become: yes
+    shell: |-
+      containerd config dump > /etc/containerd/config.toml
+
+  - name: Set SystemdCgroup to true in the containerd configuration file
+    become: yes
+    replace:
       path: /etc/containerd/config.toml
-    register: containerd_config_stat
+      regexp: 'SystemdCgroup = .*$'
+      replace: 'SystemdCgroup = true'
+    register: result_set_containerd_config
 
-  - block:
-
-    - name: Create containerd config file directory
-      become: yes
-      file:
-        path: /etc/containerd
-        state: directory
-
-    - name: Create containerd config file
-      become: yes
-      shell: |-
-        containerd config dump > /etc/containerd/config.toml
-
-    - name: Set SystemdCgroup to true in the containerd configuration file
-      become: yes
-      replace:
-        path: /etc/containerd/config.toml
-        regexp: 'SystemdCgroup = .*$'
-        replace: 'SystemdCgroup = true'
-      register: result_set_containerd_config
-
-    - name: Restart containerd
-      become: yes
-      systemd:
-        name: containerd.service
-        state: restarted
-      when: result_set_containerd_config.changed == true
-
-    when: not containerd_config_stat.stat.exists
+  - name: Restart containerd
+    become: yes
+    systemd:
+      name: containerd.service
+      state: restarted
+    when: result_set_containerd_config.changed == true
 
 - name: Enable IPv4 forwarding
   block:
@@ -96,25 +87,31 @@
     apt:
       name: ['apt-transport-https', 'ca-certificates', 'curl', 'gpg']
 
-  - name: Check kubernetes-archive-keyring.gpg existence
-    stat:
+  - name: Delete kubernetes-archive-keyring.gpg if exists
+    become: yes
+    file:
       path: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
-    register: kubernetes_archive_keyring_stat
+      state: absent
+
+  - name: Create keyring directory
+    become: yes
+    file:
+      path: /etc/apt/keyrings
+      state: directory
 
   - name: Download GPG key
     become: yes
     shell: >-
-      curl -fsSL https://dl.k8s.io/apt/doc/apt-key.gpg |
-      gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
-    when: not kubernetes_archive_keyring_stat.stat.exists
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key |
+      gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
   - name: Add k8s apt repository
     become: yes
     apt_repository:
       repo: >-
-        deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
-      state: present
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
       filename: kubernetes
+      state: present
 
   - name: Install kubernetes
     become: yes
