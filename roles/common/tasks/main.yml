@@ -116,7 +116,10 @@
   - name: Install kubernetes
     become: yes
     apt:
-      name: ['kubelet', 'kubeadm', 'kubectl']
+      name:
+        - 'kubelet={{ kubernetes_version }}'
+        - 'kubeadm={{ kubernetes_version }}'
+        - 'kubectl={{ kubernetes_version }}'
 
   - name: Fix kubernetes version
     become: yes
