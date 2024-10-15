@@ -102,14 +102,14 @@
   - name: Download GPG key
     become: yes
     shell: >-
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key |
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key |
       gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
   - name: Add k8s apt repository
     become: yes
     apt_repository:
       repo: >-
-        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
       filename: kubernetes
       state: present
 
