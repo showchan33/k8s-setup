@@ -99,17 +99,21 @@
       path: /etc/apt/keyrings
       state: directory
 
+  - name: Extract major.minor version
+    set_fact:
+      kubernetes_short_version: "{{ kubernetes_version | regex_search('^[0-9]+\\.[0-9]+') }}"
+
   - name: Download GPG key
     become: yes
     shell: >-
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key |
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_short_version }}/deb/Release.key |
       gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
   - name: Add k8s apt repository
     become: yes
     apt_repository:
       repo: >-
-        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_short_version }}/deb/ /
       filename: kubernetes
       state: present
 
