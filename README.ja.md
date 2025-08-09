@@ -135,15 +135,15 @@ ansible-playbook site_worker.yml
 
 ```
 $ kubectl version
-Client Version: v1.32.3
-Kustomize Version: v5.5.0
-Server Version: v1.32.3
+Client Version: v1.33.3
+Kustomize Version: v5.6.0
+Server Version: v1.33.3
 
 $ kubelet --version
-Kubernetes v1.32.3
+Kubernetes v1.33.3
 
 $ kubeadm version
-kubeadm version: &version.Info{Major:"1", Minor:"32", GitVersion:"v1.32.3", GitCommit:"32cc146f75aad04beaaa245a7157eb35063a9f99", GitTreeState:"clean", BuildDate:"2025-03-11T19:57:38Z", GoVersion:"go1.23.6", Compiler:"gc", Platform:"linux/amd64"}
+kubeadm version: &version.Info{Major:"1", Minor:"33", EmulationMajor:"", EmulationMinor:"", MinCompatibilityMajor:"", MinCompatibilityMinor:"", GitVersion:"v1.33.3", GitCommit:"80779bd6ff08b451e1c165a338a7b69351e9b0b8", GitTreeState:"clean", BuildDate:"2025-07-15T18:05:14Z", GoVersion:"go1.24.4", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
 # Author
