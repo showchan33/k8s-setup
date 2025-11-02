@@ -10,6 +10,12 @@
     regexp: "^/swapfile"
     replace: "#/swapfile"
 
+- name: Check if containerd command is available
+  become: yes
+  shell: command -v containerd
+  register: containerd_check
+  ignore_errors: yes
+
 - name: Installation and configuration of containerd
   block:
 
@@ -43,6 +49,8 @@
       name: containerd.service
       state: restarted
     when: result_set_containerd_config.changed == true
+
+  when: containerd_check.rc != 0
 
 - name: Enable IPv4 forwarding
   block:
